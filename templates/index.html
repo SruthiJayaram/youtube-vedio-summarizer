@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RecapIt</title>
+    <link rel="stylesheet" href="/static/styles/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="brand">📑RecapIt</div>
+
+        <div class="nav-center">
+            <button onclick="window.location.href='summaries.html'">Previous Summaries</button>
+        </div>
+
+        <div class="nav-right">
+            <button onclick="window.location.href='login.html'">Login</button>
+            <button onclick="window.location.href='signup.html'">Sign Up</button>
+        </div>
+    </div>
+
+    <div class="hero">
+        <h1 class="video-heading">YouTube Video Summarizer</h1>
+        <p class="tagline">Summarize lectures, tutorials, and more in seconds</p>
+        <div class="content-box">
+                <div class="link-bar">
+                    <button class="link-btn active" data-active="true">
+                        <i class="fas fa-link icon"></i> YouTube Video Link
+                    </button>
+                    <button class="link-btn" data-active="false">
+                        <i class="fas fa-link icon"></i> YouTube Playlist Link
+                    </button>
+                </div>
+                <div class="input-section">
+                    <input type="text" class="youtube-input" placeholder="Enter a YouTube video link e.g. https://youtube.com/...">
+                </div>
+        </div>
+    </div>
+<script src="/static/js/script.js"></script>
+</body>
+</html>

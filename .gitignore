@@ -1,0 +1,8 @@
+# Ignore the Python virtual environment
+venv310/
+
+# Ignore generated or temporary text files
+recquirements.txt
+summary.txt
+transcript.txt
+
