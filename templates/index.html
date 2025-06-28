@@ -24,6 +24,7 @@
     <div class="hero">
         <h1 class="video-heading">YouTube Video Summarizer</h1>
         <p class="tagline">Summarize lectures, tutorials, and more in seconds</p>
+        <div class="content-container">
         <div class="content-box">
                 <div class="link-bar">
                     <button class="link-btn active" data-active="true">
@@ -34,8 +35,23 @@
                     </button>
                 </div>
                 <div class="input-section">
-                    <input type="text" class="youtube-input" placeholder="Enter a YouTube video link e.g. https://youtube.com/...">
+                    <input type="text" class="youtube-input" id="youtubeLink" placeholder="Enter a YouTube video link e.g. https://youtube.com/...">
                 </div>
+                <div class="generate-section">
+                    <button class="generate-btn">Generate Summary</button>
+                </div>
+
+        </div>
+        <div class="result-box" id="resultBox" style="display: none;">
+            <div class="transcript">
+                <h3>Transcript</h3>
+                <p id="transcript-content">...</p>
+            </div>
+            <div class="summary">
+                <h3>Summary</h3>
+                <p id="summary-content">...</p>
+            </div>
+        </div>
         </div>
     </div>
 <script src="/static/js/script.js"></script>
