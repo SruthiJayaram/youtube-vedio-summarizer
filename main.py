@@ -1,4 +1,6 @@
-from flask import Flask, render_template, request, jsonify
+# main.py (Updated with Login/Signup functionality)
+
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from moviepy.editor import AudioFileClip
 import whisper
 import yt_dlp
@@ -6,8 +8,10 @@ from transformers import pipeline
 import os
 import sqlite3
 import re
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key'
 
 def init_db():
     conn = sqlite3.connect("summaries.db")
@@ -17,6 +21,11 @@ def init_db():
         url TEXT,
         transcript TEXT,
         summary TEXT
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE,
+        password TEXT
     )''')
     conn.commit()
     conn.close()
@@ -81,18 +90,58 @@ def summarize_text(text):
     return final_summary.strip()
 
 def capitalize_sentences(text):
-    # Split into sentences using regex to handle ".", "!" and "?"
     sentences = re.split(r'(?<=[.!?])\s+', text.strip())
-    # Capitalize first character of each sentence
     capitalized = [s.strip().capitalize() for s in sentences]
     return ' '.join(capitalized)
 
 @app.route('/')
 def home():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     return render_template('index.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        conn = sqlite3.connect("summaries.db")
+        c = conn.cursor()
+        c.execute("SELECT id, password FROM users WHERE email = ?", (email,))
+        user = c.fetchone()
+        conn.close()
+        if user and check_password_hash(user[1], password):
+            session['user_id'] = user[0]
+            return redirect(url_for('home'))
+        else:
+            return "Invalid credentials", 401
+    return render_template('login_signup.html')
+
+@app.route('/register', methods=['POST'])
+def register():
+    email = request.form['email']
+    password = request.form['password']
+    hashed_password = generate_password_hash(password)
+    conn = sqlite3.connect("summaries.db")
+    c = conn.cursor()
+    try:
+        c.execute("INSERT INTO users (email, password) VALUES (?, ?)", (email, hashed_password))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        return "Email already registered", 400
+    conn.close()
+    return redirect(url_for('login'))
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 @app.route('/summarize', methods=['POST'])
 def summarize():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 403
+
     url = request.json.get('url')
     if not url:
         return jsonify({'error': 'No URL provided'}), 400
@@ -108,11 +157,8 @@ def summarize():
             convert_to_wav()
             transcript = transcribe_audio()
             summary = summarize_text(transcript)
-
-            # Capitalize each sentence
             transcript = capitalize_sentences(transcript)
             summary = capitalize_sentences(summary)
-
             save_to_db(url, transcript, summary)
             os.remove("audio.mp3")
             os.remove("lecture.wav")
@@ -120,7 +166,6 @@ def summarize():
             return jsonify({'error': str(e)}), 500
 
     return jsonify({'transcript': transcript, 'summary': summary})
-
 
 if __name__ == '__main__':
     init_db()

@@ -44,3 +44,27 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 });
+
+
+        const toggleLogin = document.getElementById('toggle-login');
+        const toggleRegister = document.getElementById('toggle-register');
+        const formHeading = document.getElementById('form-heading');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+
+        toggleLogin.addEventListener('click', () => {
+            loginForm.classList.add('active');
+            registerForm.classList.remove('active');
+            toggleLogin.classList.add('active');
+            toggleRegister.classList.remove('active');
+            formHeading.textContent = 'Login';
+        });
+
+        toggleRegister.addEventListener('click', () => {
+            loginForm.classList.remove('active');
+            registerForm.classList.add('active');
+            toggleLogin.classList.remove('active');
+            toggleRegister.classList.add('active');
+            formHeading.textContent = 'Register';
+        });
+   
