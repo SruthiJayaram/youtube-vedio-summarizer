@@ -6,3 +6,6 @@ recquirements.txt
 summary.txt
 transcript.txt
 
+# Ignore environment variable file
+.env
+

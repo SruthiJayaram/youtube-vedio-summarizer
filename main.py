@@ -9,9 +9,11 @@ import os
 import sqlite3
 import re
 from werkzeug.security import generate_password_hash, check_password_hash
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
+load_dotenv()
 
 def init_db():
     conn = sqlite3.connect("summaries.db")
