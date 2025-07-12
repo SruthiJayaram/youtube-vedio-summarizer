@@ -1,6 +1,4 @@
-# main.py (Updated with Login/Signup functionality)
-
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from moviepy.editor import AudioFileClip
 import whisper
 import yt_dlp
@@ -10,10 +8,36 @@ import sqlite3
 import re
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
+# from flask_dance.contrib.google import make_google_blueprint, google
+from flask_session import Session
+import requests
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = False
+app.config['SESSION_TYPE'] = 'filesystem'
 load_dotenv()
+Session(app)
+
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
+# google_bp = make_google_blueprint(
+#     client_id=os.environ.get("GOOGLE_OAUTH_CLIENT_ID"),
+#     client_secret=os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET"),
+#     scope=[
+#         "https://www.googleapis.com/auth/userinfo.profile",
+#         "https://www.googleapis.com/auth/userinfo.email",
+#         "openid"
+#     ],
+#     redirect_url="/login/google/authorized"
+# )
+# app.register_blueprint(google_bp, url_prefix="/login")
+
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
+REDIRECT_URI = "http://127.0.0.1:5000/login/google/callback"
 
 def init_db():
     conn = sqlite3.connect("summaries.db")
@@ -98,6 +122,7 @@ def capitalize_sentences(text):
 
 @app.route('/')
 def home():
+    print("Session at home:", dict(session))  # Add this line
     if 'user_id' not in session:
         return redirect(url_for('login'))
     return render_template('index.html')
@@ -168,6 +193,74 @@ def summarize():
             return jsonify({'error': str(e)}), 500
 
     return jsonify({'transcript': transcript, 'summary': summary})
+
+@app.route('/set_test_cookie')
+def set_test_cookie():
+    session['test'] = 'cookie'
+    return 'Test cookie set'
+
+
+
+@app.route('/debug_session')
+def debug_session():
+    print("Session at debug:", dict(session))
+    return "Check your terminal for session info"
+
+@app.route('/login/google')
+def login_google():
+    google_cfg = requests.get(GOOGLE_DISCOVERY_URL).json()
+    authorization_endpoint = google_cfg["authorization_endpoint"]
+
+    request_uri = (
+        f"{authorization_endpoint}?response_type=code"
+        f"&client_id={GOOGLE_CLIENT_ID}"
+        f"&redirect_uri={REDIRECT_URI}"
+        f"&scope=openid%20email%20profile"
+        f"&access_type=offline"
+        f"&prompt=consent"
+    )
+    return redirect(request_uri)
+
+@app.route('/login/google/callback')
+def google_callback():
+    code = request.args.get("code")
+    google_cfg = requests.get(GOOGLE_DISCOVERY_URL).json()
+    token_endpoint = google_cfg["token_endpoint"]
+
+    token_data = {
+        "code": code,
+        "client_id": GOOGLE_CLIENT_ID,
+        "client_secret": GOOGLE_CLIENT_SECRET,
+        "redirect_uri": REDIRECT_URI,
+        "grant_type": "authorization_code"
+    }
+    token_response = requests.post(token_endpoint, data=token_data)
+    token_json = token_response.json()
+    access_token = token_json.get("access_token")
+
+    userinfo_endpoint = google_cfg["userinfo_endpoint"]
+    userinfo_response = requests.get(
+        userinfo_endpoint,
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+    user_info = userinfo_response.json()
+    email = user_info["email"]
+
+    # Log in or register user
+    conn = sqlite3.connect("summaries.db")
+    c = conn.cursor()
+    c.execute("SELECT id FROM users WHERE email = ?", (email,))
+    user = c.fetchone()
+    if not user:
+        c.execute("INSERT INTO users (email, password) VALUES (?, ?)", (email, ""))  # No password for Google users
+        conn.commit()
+        user_id = c.lastrowid
+    else:
+        user_id = user[0]
+    conn.close()
+
+    session['user_id'] = user_id
+    return redirect(url_for('home'))
 
 if __name__ == '__main__':
     init_db()

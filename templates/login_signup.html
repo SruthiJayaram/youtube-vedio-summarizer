@@ -19,41 +19,33 @@
                 <button id="toggle-register">Register</button>
             </div>
 
-
             <!-- Login Form -->
             <form id="login-form" class="auth-form active" method="POST" action="/login">
-    <input type="email" name="email" placeholder="Please enter your email" required>
-    <input type="password" name="password" placeholder="Please enter your password" required>
-    <div class="options">
-        <label><input type="checkbox"> Remember Me</label>
-        <a href="#">Forgot Password?</a>
-    </div>
-    <button type="submit" class="auth-btn">Login</button>
-    <div class="or-divider">or</div>
-    </form>
-    <!-- Sign in with Google button -->
-<button class="google-btn" onclick="window.location.href='/login/google'">
-  <i class="fab fa-google"></i> Sign in with Google
-</button>
-
-
-
+                <input type="email" name="email" placeholder="Please enter your email" required>
+                <input type="password" name="password" placeholder="Please enter your password" required>
+                <div class="options">
+                    <label><input type="checkbox"> Remember Me</label>
+                    <a href="#">Forgot Password?</a>
+                </div>
+                <button type="submit" class="auth-btn">Login</button>
+                <div class="or-divider">or</div>
+                <!-- Only one Google button for login -->
+                <a class="google-btn" href="/login/google">
+                  <i class="fab fa-google"></i> Sign in with Google
+                </a>
+            </form>
 
             <!-- Register Form -->
             <form id="register-form" class="auth-form" method="POST" action="/register">
-    <input type="email" name="email" placeholder="Email" required>
-    <input type="password" name="password" placeholder="Password" required>
-    <button type="submit" class="auth-btn">Submit</button>
-    <div class="or-divider">or</div>
-    </form>
-    <!-- Sign in with Google button -->
-<button class="google-btn" onclick="window.location.href='/login/google'">
-  <i class="fab fa-google"></i> Sign in with Google
-</button>
-
-
-
-
+                <input type="email" name="email" placeholder="Email" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <button type="submit" class="auth-btn">Submit</button>
+                <div class="or-divider">or</div>
+                <!-- Only one Google button for register -->
+                <a class="google-btn" href="/login/google">
+                  <i class="fab fa-google"></i> Sign in with Google
+                </a>
+            </form>
         </div>
     </div>
 
