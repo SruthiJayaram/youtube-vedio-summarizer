@@ -129,6 +129,7 @@ def home():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    show_register = request.args.get('show') == 'register'
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
@@ -142,7 +143,7 @@ def login():
             return redirect(url_for('home'))
         else:
             return "Invalid credentials", 401
-    return render_template('login_signup.html')
+    return render_template('login_signup.html', show_register=show_register)
 
 @app.route('/register', methods=['POST'])
 def register():

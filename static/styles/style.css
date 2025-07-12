@@ -275,7 +275,66 @@ body {
 .form-toggle {
     display: flex;
     justify-content: center;
-    margin-bottom: 1rem;
+    margin-bottom: 20px;
+    gap: 10px;
+}
+
+/* Pill container for toggle */
+.form-toggle-pill {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #e8eaf6;
+    border-radius: 12px;
+    padding: 2px 6px;         /* reduce vertical padding for slim pill */
+    width: 320px;             /* keep pill long */
+    margin: 0 auto 24px auto;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    border: 1px solid #d1d5e7;
+    gap: 0;
+}
+
+/* Toggle buttons inside pill */
+.toggle-btn {
+    flex: 1;
+    text-align: center;
+    padding: 6px 0;           /* reduce vertical padding for slim buttons */
+    border: none;
+    background: transparent;
+    color: #345678;
+    font-size: 0.95rem;       /* slightly smaller font */
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+    margin: 0 1px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Highlight for active button */
+.toggle-btn.active {
+    background: #345678;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(52,86,120,0.08);
+}
+
+.form-toggle a {
+    padding: 10px 30px;
+    border-radius: 5px;
+    background: #f0f0f0;
+    color: #333;
+    text-decoration: none;
+    font-weight: bold;
+    border: 1px solid #ccc;
+    transition: background 0.2s, color 0.2s;
+}
+
+.form-toggle a.active {
+    background: #007bff;
+    color: #fff;
+    border-color: #007bff;
 }
 
 .form-toggle button {
@@ -294,6 +353,14 @@ body {
     background-color: #2f6aa5;
 }
 
+
+.auth-form {
+    display: none;
+}
+
+.auth-form.active {
+    display: block;
+}
 
 .auth-form {
     display: none;
