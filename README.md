@@ -72,7 +72,3 @@ python main.py
 - The repo includes a patch for `moviepy/editor.py` if you encounter import errors with Python 3.12+
 - If you use Codespaces, update the redirect URI in `main.py` and Google Cloud Console to match your public URL
 - `.env` is ignored by git; use `.env.example` for sharing config
-
-
----
-**For questions or issues, open an issue on GitHub or contact the repo owner.**
