@@ -12,14 +12,19 @@
         <div class="brand">📑RecapIt</div>
 
         <div class="nav-center">
-            <button onclick="window.location.href='summaries.html'">Previous Summaries</button>
+            <button onclick="window.location.href='/summaries'">Previous Summaries</button>
         </div>
 
         <div class="nav-right">
-            <!-- Correct login and register buttons -->
-            <button onclick="window.location.href='/login'">Login</button>
-            <button onclick="window.location.href='/login?show=register'">Sign Up</button>
-
+            {% if session.get('user_id') %}
+                <button onclick="window.location.href='/logout'">Logout</button>
+                <span class="user-icon" style="margin-left:10px; vertical-align:middle;">
+                    <i class="fas fa-user-circle fa-2x"></i>
+                </span>
+            {% else %}
+                <button onclick="window.location.href='/login'">Login</button>
+                <button onclick="window.location.href='/login?show=register'">Sign Up</button>
+            {% endif %}
         </div>
     </div>
 
@@ -28,22 +33,19 @@
         <p class="tagline">Summarize lectures, tutorials, and more in seconds</p>
         <div class="content-container">
         <div class="content-box">
-                <div class="link-bar">
-                    <button class="link-btn active" data-active="true">
-                        <i class="fas fa-link icon"></i> YouTube Video Link
-                    </button>
-                    <button class="link-btn" data-active="false">
-                        <i class="fas fa-link icon"></i> YouTube Playlist Link
-                    </button>
-                </div>
-                <div class="input-section">
-                    <input type="text" class="youtube-input" id="youtubeLink" placeholder="Enter a YouTube video link e.g. https://youtube.com/...">
+
+            <div class="input-section">
+                    <!-- Video Link Input -->
+                    <div class="video-input-section active" id="videoInputSection">
+                        <input type="text" class="youtube-input" id="youtubeLink" placeholder="Enter a YouTube video link e.g. https://youtube.com/watch?v=...">
+                    </div>
                 </div>
                 <div class="generate-section">
-                    <button class="generate-btn">Generate Summary</button>
+                    <button class="generate-btn" id="generateBtn">Generate Summary</button>
                 </div>
 
         </div>
+        
         <div class="result-box" id="resultBox" style="display: none;">
             <div class="transcript">
                 <h3>Transcript</h3>

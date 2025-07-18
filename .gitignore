@@ -20,6 +20,10 @@ wheels/
 .installed.cfg
 *.egg
 
+# YouTube cookies (contains private authentication data)
+cookies.txt
+cookies.json
+
 # Virtual Environment
 .venv/
 venv/
