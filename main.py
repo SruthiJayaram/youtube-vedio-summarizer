@@ -16,6 +16,7 @@ import time
 import random
 import requests
 from urllib.parse import urlparse, parse_qs
+import secrets
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -49,8 +50,15 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         email TEXT UNIQUE,
-        password TEXT
+        password TEXT,
+        reset_token TEXT
     )''')
+    
+    # Add new columns if they don't exist
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN reset_token TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
     
     # Add new columns to existing summaries table if they don't exist
     try:
@@ -928,6 +936,40 @@ def google_callback():
 
     session['user_id'] = user_id
     return redirect(url_for('home'))
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form['email']
+        conn = sqlite3.connect("summaries.db")
+        c = conn.cursor()
+        c.execute("SELECT id FROM users WHERE email = ?", (email,))
+        user = c.fetchone()
+        if user:
+            # Generate a secure token
+            token = secrets.token_urlsafe(32)
+            c.execute("UPDATE users SET reset_token = ? WHERE email = ?", (token, email))
+            conn.commit()
+            reset_link = url_for('reset_password', token=token, _external=True)
+            conn.close()
+            # In production, send this link via email!
+            return f"Password reset link: <a href='{reset_link}'>{reset_link}</a>"
+        conn.close()
+        return "Email not found.", 404
+    return render_template('forgot_password.html')
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if request.method == 'POST':
+        password = request.form['password']
+        hashed_password = generate_password_hash(password)
+        conn = sqlite3.connect("summaries.db")
+        c = conn.cursor()
+        c.execute("UPDATE users SET password = ?, reset_token = NULL WHERE reset_token = ?", (hashed_password, token))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('login'))
+    return render_template('reset_password.html', token=token)
 
 if __name__ == '__main__':
     init_db()

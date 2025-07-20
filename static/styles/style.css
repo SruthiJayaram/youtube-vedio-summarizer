@@ -880,7 +880,33 @@ body {
     word-wrap: break-word;
 }
 
-/* Responsive Design */
+/* Make forgot password page fully white */
+body.forgot-bg {
+    background: #fff !important;
+}
+
+body.forgot-bg .auth-container {
+    background: none;
+    height: 100vh;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+body.forgot-bg .auth-form {
+    background: #fff;
+    box-shadow: 0 4px 16px rgba(52,86,120,0.08);
+    border-radius: 12px;
+    padding: 2.5rem 2rem;
+    max-width: 420px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
 @media (max-width: 768px) {
     .video-grid {
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
