@@ -112,79 +112,9 @@ def get_ydl_opts(extract_flat=False):
         'quiet': True,
         'no_warnings': True,
         'extract_flat': extract_flat,
-        
-        # Anti-bot detection measures
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'referer': 'https://www.youtube.com/',
-        
-        # Use different extractor configurations
-        'extractor_args': {
-            'youtube': {
-                'skip': ['hls'],
-                'player_skip': ['js'],
-                'player_client': ['web'],
-            }
-        },
-        
-        # Add headers to appear more like a real browser
-        'headers': {
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate',
-            'DNT': '1',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-        },
-        
-        # Use IPv6 if available to potentially bypass some restrictions
-        'prefer_ipv6': True,
-        
-        # Sleep between requests to avoid being flagged
-        'sleep_interval': 1,
-        'max_sleep_interval': 3,
+        'no_check_certificate': True,
+        'prefer_insecure': True,
     }
-    
-    # Enhanced cookie handling
-    if os.path.exists('cookies.txt'):
-        print("Using cookies.txt file for authentication")
-        base_opts['cookiefile'] = 'cookies.txt'
-        base_opts['cookiesfrombrowser'] = None  # Don't use browser cookies if file exists
-        # Force fresh cookies - don't use cached ones
-        base_opts['cookies'] = None
-        base_opts['http_headers'] = {
-            **base_opts.get('http_headers', {}),
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'DNT': '1',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
-            'Sec-Fetch-User': '?1',
-        }
-        # Try to refresh cookies by forcing a new session
-        base_opts['extract_flat'] = extract_flat
-        base_opts['skip_download'] = extract_flat
-    else:
-        print("Warning: No cookies.txt file found. You may encounter bot detection.")
-        print("Run 'python setup_cookies.py' for instructions on setting up cookies.")
-        # Try to use browser cookies as fallback
-        try:
-            base_opts['cookiesfrombrowser'] = ('chrome', None)
-        except:
-            try:
-                base_opts['cookiesfrombrowser'] = ('firefox', None)
-            except:
-                pass
-    
-    if not extract_flat:
-        base_opts['postprocessors'] = [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }]
     
     return base_opts
 
@@ -590,13 +520,102 @@ def download_audio(url, max_retries=3):
     return False
 
 def convert_to_wav():
-    clip = AudioFileClip("audio.mp3").subclip(0, 120)
-    clip.write_audiofile("lecture.wav")
+    """Convert audio file to WAV format with proper duration handling"""
+    try:
+        from moviepy.editor import AudioFileClip
+        
+        # Find the downloaded audio file
+        audio_files = ["audio.mp3", "audio.m4a", "audio.webm", "audio.wav", "audio.mp4"]
+        audio_file = None
+        
+        for file in audio_files:
+            if os.path.exists(file):
+                audio_file = file
+                break
+        
+        if not audio_file:
+            raise FileNotFoundError("No audio file found to convert")
+        
+        # Load audio clip
+        clip = AudioFileClip(audio_file)
+        duration = clip.duration
+        
+        print(f"Audio file: {audio_file}")
+        print(f"Audio duration: {duration} seconds")
+        
+        # Use the actual duration or 120 seconds, whichever is smaller
+        max_duration = min(duration, 120)
+        
+        # Only use subclip if we need to limit duration
+        if duration > 120:
+            clip = clip.subclip(0, max_duration)
+            print(f"Clipped audio to {max_duration} seconds")
+        
+        # Write to WAV file
+        clip.write_audiofile("lecture.wav", verbose=False, logger=None)
+        
+        # Close the clip to free memory
+        clip.close()
+        
+        print("✅ Successfully converted to lecture.wav")
+        return True
+        
+    except Exception as e:
+        print(f"Error in convert_to_wav: {e}")
+        return False
 
 def transcribe_audio():
-    model = whisper.load_model("tiny")
-    result = model.transcribe("lecture.wav", fp16=False)
-    return result['text']
+    """Transcribe audio using Whisper with error handling"""
+    try:
+        if not os.path.exists("lecture.wav"):
+            raise FileNotFoundError("lecture.wav not found")
+        
+        model = whisper.load_model("tiny")
+        result = model.transcribe("lecture.wav", fp16=False)
+        
+        transcript = result['text']
+        print(f"✅ Transcription successful, length: {len(transcript)} characters")
+        
+        return transcript
+        
+    except Exception as e:
+        print(f"Error in transcribe_audio: {e}")
+        # Try with a different audio file if lecture.wav failed
+        audio_files = ["audio.mp3", "audio.m4a", "audio.webm"]
+        for audio_file in audio_files:
+            if os.path.exists(audio_file):
+                try:
+                    print(f"Trying direct transcription with {audio_file}")
+                    model = whisper.load_model("tiny")
+                    result = model.transcribe(audio_file, fp16=False)
+                    return result['text']
+                except Exception as fallback_error:
+                    print(f"Fallback transcription with {audio_file} failed: {fallback_error}")
+                    continue
+        
+        return f"Transcription failed: {str(e)}"
+
+def transcribe_audio_whisper(audio_path):
+    """Transcribe audio using Whisper with better error handling"""
+    try:
+        import whisper
+        
+        # Load Whisper model
+        model = whisper.load_model("base")
+        
+        # Transcribe with proper error handling
+        result = model.transcribe(
+            audio_path,
+            language='en',
+            task='transcribe',
+            fp16=False  # Use fp32 for better compatibility
+        )
+        
+        return result["text"]
+        
+    except Exception as e:
+        print(f"Whisper transcription error: {e}")
+        return f"Transcription failed: {str(e)}"
 
 def summarize_text(text):
     summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
@@ -970,6 +989,137 @@ def reset_password(token):
         conn.close()
         return redirect(url_for('login'))
     return render_template('reset_password.html', token=token)
+
+@app.route('/get-playlist', methods=['POST'])
+def get_playlist():
+    """Extract videos from a YouTube playlist"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    playlist_url = request.json.get('url')
+    if not playlist_url:
+        return jsonify({'error': 'No playlist URL provided'}), 400
+    
+    try:
+        # Extract playlist ID from URL
+        import re
+        playlist_id_match = re.search(r'list=([^&]+)', playlist_url)
+        if not playlist_id_match:
+            return jsonify({'error': 'Invalid playlist URL'}), 400
+        
+        playlist_id = playlist_id_match.group(1)
+        
+        # Use yt-dlp to extract playlist info
+        ydl_opts = {
+            'quiet': True,
+            'no_warnings': True,
+            'extract_flat': True,
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        }
+        
+        # Use cookies if available
+        if os.path.exists('cookies.txt'):
+            ydl_opts['cookiefile'] = 'cookies.txt'
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            playlist_info = ydl.extract_info(playlist_url, download=False)
+            
+            if not playlist_info or 'entries' not in playlist_info:
+                return jsonify({'error': 'Could not extract playlist information'}), 400
+            
+            videos = []
+            for entry in playlist_info['entries']:
+                if entry:  # Skip None entries
+                    video_id = entry.get('id')
+                    if video_id:
+                        video = {
+                            'id': video_id,
+                            'url': f"https://www.youtube.com/watch?v={video_id}",
+                            'title': entry.get('title', 'Unknown Title'),
+                            'thumbnail': f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg",
+                            'duration': entry.get('duration_string', 'Unknown')
+                        }
+                        videos.append(video)
+            
+            return jsonify({
+                'playlist_title': playlist_info.get('title', 'Unknown Playlist'),
+                'videos': videos[:50]  # Limit to 50 videos for performance
+            })
+    
+    except Exception as e:
+        print(f"Playlist extraction error: {e}")
+        return jsonify({'error': f'Failed to load playlist: {str(e)}'}), 500
+
+def extract_audio_from_video(video_path, output_audio_path):
+    """Extract audio from video file"""
+    try:
+        from moviepy.editor import VideoFileClip
+        
+        # Load video and extract audio
+        video = VideoFileClip(video_path)
+        audio = video.audio
+        
+        # Get the actual duration
+        duration = audio.duration
+        print(f"Audio duration: {duration} seconds")
+        
+        # Ensure we don't exceed the actual duration
+        if duration > 0:
+            # Write audio with proper duration handling
+            audio.write_audiofile(
+                output_audio_path,
+                logger=None,  # Suppress MoviePy logs
+                verbose=False,
+                temp_audiofile='temp-audio.m4a'
+            )
+        
+        # Clean up
+        audio.close()
+        video.close()
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error extracting audio: {e}")
+        return False
+
+def download_youtube_audio(url, output_path="audio"):
+    """Download YouTube audio with better error handling"""
+    
+    max_retries = 2  # Reduce retries since cookies aren't working
+    retry_delay = 3   # Shorter delay
+    
+    for attempt in range(max_retries):
+        try:
+            print(f"Download attempt {attempt + 1}")
+            
+            ydl_opts = get_ydl_opts(extract_flat=False)
+            
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+            
+            # Check if file was created
+            possible_files = [
+                "audio.mp3", "audio.m4a", "audio.webm", 
+                "audio.wav", "audio.mp4", "audio.mkv"
+            ]
+            
+            for file in possible_files:
+                if os.path.exists(file):
+                    print(f"✅ Download successful: {file}")
+                    return file
+            
+            raise FileNotFoundError("No audio file found after download")
+            
+        except Exception as e:
+            print(f"Download attempt {attempt + 1} failed: {e}")
+            if attempt < max_retries - 1:
+                print(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                retry_delay += 2
+            else:
+                print("All download attempts failed")
+                raise e
 
 if __name__ == '__main__':
     init_db()
