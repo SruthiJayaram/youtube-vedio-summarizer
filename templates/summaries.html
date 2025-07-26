@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RecapIt - Previous Summaries</title>
+    <link rel="stylesheet" href="/static/styles/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+    <div class="navbar">
+        <div class="brand">📑RecapIt</div>
+
+        <div class="nav-center">
+            <button onclick="window.location.href='/'">Home</button>
+        </div>
+
+        <div class="nav-right">
+            {% if session.get('user_id') %}
+                <button onclick="window.location.href='/logout'">Logout</button>
+                <span class="user-icon" style="margin-left:10px; vertical-align:middle;">
+                    <i class="fas fa-user-circle fa-2x"></i>
+                </span>
+            {% else %}
+                <button onclick="window.location.href='/login'">Login</button>
+                <button onclick="window.location.href='/login?show=register'">Sign Up</button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="summaries-container">
+        {% if summaries %}
+            <div class="video-grid">
+                {% for summary in summaries %}
+                    <div class="video-card" data-summary-id="{{ summary.id }}" onclick="loadSummary(this.dataset.summaryId)">
+                        <div class="video-thumbnail">
+                            <img src="{{ summary.thumbnail }}" alt="{{ summary.title }}" loading="lazy">
+                            <div class="video-duration">{{ summary.duration }}</div>
+                        </div>
+                        <div class="video-info">
+                            <h3 class="video-title">{{ summary.title }}</h3>
+                            <p class="video-summary">{{ summary.summary_preview }}</p>
+                            <div class="video-meta">
+                                <span class="video-date">{{ summary.created_at.split()[0] if summary.created_at else 'Unknown date' }}</span>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-video fa-4x"></i>
+                <h2>No summaries yet</h2>
+                <p>Start by summarizing your first video!</p>
+                <button onclick="window.location.href='/'" class="cta-button">Summarize a Video</button>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Summary Detail Modal -->
+    <div id="summaryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Video Summary</h2>
+                <span class="close" onclick="closeSummaryModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="video-details">
+                    <img id="modalThumbnail" src="" alt="Video thumbnail">
+                    <div class="video-meta-details">
+                        <div class="meta-item">
+                            <strong>Duration:</strong> <span id="modalDuration">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <strong>Date:</strong> <span id="modalDate">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <strong>URL:</strong> <a id="modalUrl" href="#" target="_blank">View on YouTube</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="content-tabs">
+                    <button class="tab-button active" onclick="showTab('summary')">Summary</button>
+                    <button class="tab-button" onclick="showTab('transcript')">Transcript</button>
+                </div>
+                
+                <div class="tab-content">
+                    <div id="summaryTab" class="tab-pane active">
+                        <h3>Summary</h3>
+                        <div id="modalSummary" class="content-text">Loading...</div>
+                    </div>
+                    <div id="transcriptTab" class="tab-pane">
+                        <h3>Transcript</h3>
+                        <div id="modalTranscript" class="content-text">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadSummary(summaryId) {
+            const modal = document.getElementById('summaryModal');
+            modal.style.display = 'block';
+            
+            try {
+                const response = await fetch(`/summary/${summaryId}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                
+                // Update modal content
+                document.getElementById('modalTitle').textContent = data.title;
+                document.getElementById('modalThumbnail').src = data.thumbnail;
+                document.getElementById('modalDuration').textContent = data.duration || 'Unknown';
+                document.getElementById('modalDate').textContent = data.created_at ? data.created_at.split()[0] : 'Unknown';
+                document.getElementById('modalUrl').href = data.url;
+                document.getElementById('modalSummary').textContent = data.summary;
+                document.getElementById('modalTranscript').textContent = data.transcript;
+                
+            } catch (error) {
+                console.error('Error loading summary:', error);
+                alert('Error loading summary');
+            }
+        }
+        
+        function closeSummaryModal() {
+            document.getElementById('summaryModal').style.display = 'none';
+        }
+        
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-pane').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('summaryModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

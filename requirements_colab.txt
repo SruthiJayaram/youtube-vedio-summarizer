@@ -1,0 +1,10 @@
+flask
+whisper
+yt-dlp
+transformers
+moviepy
+librosa
+pyngrok
+firebase-admin
+python-dotenv
+flask-session

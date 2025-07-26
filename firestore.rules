@@ -1,0 +1,15 @@
+// firestore.rules - Firebase Firestore Security Rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read/write to summaries collection
+    match /summaries/{document} {
+      allow read, write: if true; // Open for now, add auth later
+    }
+    
+    // Allow read/write to users collection  
+    match /users/{document} {
+      allow read, write: if true;
+    }
+  }
+}

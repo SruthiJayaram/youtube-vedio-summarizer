@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RecapIt</title>
+    <link rel="stylesheet" href="/static/styles/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="brand">📑RecapIt</div>
+
+        <div class="nav-center">
+            <button onclick="window.location.href='/summaries'">Previous Summaries</button>
+        </div>
+
+        <div class="nav-right">
+            {% if session.get('user_id') %}
+                <button onclick="window.location.href='/logout'">Logout</button>
+                <span class="user-icon" style="margin-left:10px; vertical-align:middle;">
+                    <i class="fas fa-user-circle fa-2x"></i>
+                </span>
+            {% else %}
+                <button onclick="window.location.href='/login'">Login</button>
+                <button onclick="window.location.href='/login?show=register'">Sign Up</button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="hero">
+        <h1 class="video-heading">YouTube Video Summarizer</h1>
+        <p class="tagline">Summarize lectures, tutorials, and more in seconds</p>
+        <div class="content-container">
+            <div class="content-box">
+
+                <!-- Toggle buttons for Video/Playlist -->
+                <div class="link-bar">
+                    <button class="link-btn active" id="video-btn" onclick="toggleMode('video')">
+                        <i class="fas fa-play icon"></i> YouTube Video Link
+                    </button>
+                    <button class="link-btn" id="playlist-btn" onclick="toggleMode('playlist')">
+                        <i class="fas fa-list icon"></i> YouTube Playlist Link
+                    </button>
+                </div>
+
+                <!-- Video Mode (your existing functionality) -->
+                <div id="video-mode" class="mode-content active">
+                    <div class="input-section">
+                        <input type="text" class="youtube-input" id="youtubeLink" placeholder="Enter a YouTube video link e.g. https://youtube.com/watch?v=...">
+                    </div>
+                    <div class="generate-section">
+                        <button class="generate-btn" id="generateBtn" onclick="generateSummary()">Generate Summary</button>
+                    </div>
+                </div>
+
+                <!-- Playlist Mode -->
+                <div id="playlist-mode" class="mode-content">
+                    <div class="input-section">
+                        <input type="text" class="youtube-input" id="playlistLink" placeholder="Enter a YouTube playlist link e.g. https://youtube.com/playlist?list=...">
+                    </div>
+                    <div class="generate-section">
+                        <button class="generate-btn" onclick="loadPlaylist()">Select Video</button>
+                    </div>
+                </div>
+
+            </div>
+            
+            <!-- Playlist Video Selection Modal -->
+            <div id="playlist-modal" class="modal-overlay">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Select a Video from Playlist</h3>
+                        <button class="close-btn" onclick="closePlaylistModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="playlist-videos" class="playlist-grid">
+                            <!-- Video thumbnails will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="result-box" id="resultBox" style="display: none;">
+                <div class="transcript">
+                    <h3>Transcript</h3>
+                    <p id="transcript-content">...</p>
+                </div>
+                <div class="summary">
+                    <h3>Summary</h3>
+                    <p id="summary-content">...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+<script src="/static/js/script.js"></script>
+</body>
+</html>

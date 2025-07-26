@@ -1,0 +1,12 @@
+Flask==2.3.3
+whisper
+yt-dlp
+transformers
+moviepy
+librosa
+werkzeug
+python-dotenv
+flask-session
+requests
+torch
+firebase-admin
