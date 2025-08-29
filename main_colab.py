@@ -1,105 +1,114 @@
-# main_colab.py - Clean Python version for Google Colab
+# main_colab.py - Fixed version for Google Colab
 import os
 os.environ['COLAB_ENV'] = '1'
 
-from flask import Flask, request, jsonify
-import whisper
-import yt_dlp
-from transformers import pipeline
+# Core imports
+from flask import Flask, request, jsonify, render_template
 import time
 import random
 from urllib.parse import urlparse, parse_qs
 import re
-import firebase_admin
-from firebase_admin import credentials, firestore
-import torch
-from moviepy.editor import AudioFileClip
 import threading
 
-app = Flask(__name__)
-app.secret_key = 'colab_secret_key'
+# ML/AI imports
+try:
+    import whisper
+    print("✅ Whisper imported successfully")
+except ImportError as e:
+    print(f"❌ Whisper import failed: {e}")
+    print("Installing whisper...")
+    import subprocess
+    subprocess.run(["pip", "install", "openai-whisper"], check=True)
+    import whisper
+
+try:
+    import yt_dlp
+    print("✅ yt-dlp imported successfully")
+except ImportError:
+    print("Installing yt-dlp...")
+    import subprocess
+    subprocess.run(["pip", "install", "yt-dlp"], check=True)
+    import yt_dlp
+
+try:
+    from transformers import pipeline
+    print("✅ Transformers imported successfully")
+except ImportError:
+    print("Installing transformers...")
+    import subprocess
+    subprocess.run(["pip", "install", "transformers"], check=True)
+    from transformers import pipeline
+
+try:
+    import firebase_admin
+    from firebase_admin import credentials, firestore
+    print("✅ Firebase imported successfully")
+except ImportError:
+    print("Installing firebase...")
+    import subprocess
+    subprocess.run(["pip", "install", "firebase-admin"], check=True)
+    import firebase_admin
+    from firebase_admin import credentials, firestore
+
+try:
+    import torch
+    print(f"✅ PyTorch imported successfully - CUDA: {torch.cuda.is_available()}")
+except ImportError:
+    print("Installing torch...")
+    import subprocess
+    subprocess.run(["pip", "install", "torch", "torchaudio"], check=True)
+    import torch
+
+try:
+    from moviepy.editor import AudioFileClip
+    print("✅ MoviePy imported successfully")
+except ImportError:
+    print("Installing moviepy...")
+    import subprocess
+    subprocess.run(["pip", "install", "moviepy"], check=True)
+    from moviepy.editor import AudioFileClip
+
+# Install and import ngrok
+try:
+    from pyngrok import ngrok
+    print("✅ pyngrok imported successfully")
+except ImportError:
+    print("Installing pyngrok...")
+    import subprocess
+    subprocess.run(["pip", "install", "pyngrok"], check=True)
+    from pyngrok import ngrok
+
+# Initialize Flask app
+app = Flask(__name__, template_folder='templates', static_folder='static')
+app.secret_key = 'colab_secret_key_' + str(random.randint(1000, 9999))
+
+print("🚀 All imports successful! Flask app initialized.")
 
 # Initialize Firebase for Colab
 def init_firebase_colab():
     """Initialize Firebase for Colab"""
     try:
-        if not firebase_admin._apps:
-            if os.path.exists('firebase-key.json'):
-                cred = credentials.Certificate('firebase-key.json')
-                firebase_admin.initialize_app(cred)
-                print("✅ Firebase initialized in Colab")
-                return firestore.client()
-            else:
-                print("❌ Upload firebase-key.json to Colab first!")
-                return None
-        return firestore.client()
-    except Exception as e:
-        print(f"Firebase initialization failed: {e}")
-        return None
+        @app.route('/')
+        def home():
+            try:
+                return render_template('index.html')
+            except Exception as e:
+                return f"Error loading template: {e}", 500
 
-db_firebase = init_firebase_colab()
+        # Additional routes to use your templates
+        @app.route('/summaries')
+        def summaries():
+            try:
+                return render_template('summaries.html')
+            except Exception as e:
+                return f"Error loading template: {e}", 500
 
-# Colab Configuration
-COLAB_CONFIG = {
-    'whisper_model': 'base',
-    'max_video_hours': 6,
-    'chunk_duration': 900,
-    'use_gpu': True
-}
-
-def extract_video_id(url):
-    """Extract video ID from YouTube URL"""
-    parsed = urlparse(url)
-    if parsed.hostname in ['youtube.com', 'www.youtube.com']:
-        if parsed.path == '/watch':
-            return parse_qs(parsed.query).get('v', [None])[0]
-        elif parsed.path.startswith('/embed/'):
-            return parsed.path.split('/')[2]
-    elif parsed.hostname in ['youtu.be']:
-        return parsed.path[1:]
-    return None
-
-def normalize_youtube_url(url):
-    """Normalize YouTube URL"""
-    video_id = extract_video_id(url)
-    if video_id:
-        return f"https://www.youtube.com/watch?v={video_id}"
-    return url
-
-def save_to_firebase_colab(url, transcript, summary, title=None, thumbnail=None, duration=None):
-    """Save to Firebase from Colab"""
-    try:
-        if not db_firebase:
-            print("Firebase not available")
-            return False
-        
-        doc_data = {
-            'url': normalize_youtube_url(url),
-            'title': title or 'Unknown Video',
-            'thumbnail': thumbnail or '',
-            'duration': duration or 'Unknown',
-            'created_at': firestore.SERVER_TIMESTAMP,
-            'transcript': transcript,
-            'summary': summary,
-            'processed_on': 'Google Colab',
-            'video_id': extract_video_id(url)
-        }
-        
-        video_id = extract_video_id(url)
-        if video_id:
-            db_firebase.collection('summaries').document(video_id).set(doc_data)
-            print(f"✅ Saved to Firebase from Colab: {title}")
-            return True
-            
-    except Exception as e:
-        print(f"Firebase save failed: {e}")
-        return False
-
-def check_existing_summary_colab(url):
-    """Check Firebase for existing summary"""
-    try:
-        if not db_firebase:
-            return None
+        @app.route('/login')
+        def login():
+            try:
+                return render_template('login_signup.html')
+            except Exception as e:
+                return f"Error loading template: {e}", 500
             
         video_id = extract_video_id(url)
         if video_id:
@@ -177,29 +186,42 @@ def convert_to_wav_colab():
             if os.path.exists(file):
                 audio_file = file
                 break
-        
+    
         if not audio_file:
-            raise FileNotFoundError("No audio file found")
-        
+            print("❌ No audio file found")
+            return False
+    
         clip = AudioFileClip(audio_file)
         duration = clip.duration
-        
-        print(f"Audio duration: {duration/3600:.1f} hours ({duration/60:.1f} minutes)")
-        
-        if duration > 21600:  # 6 hours
-            print("❌ Video exceeds 6-hour Colab limit")
+    
+        print(f"Audio: {duration/60:.1f} minutes")
+    
+        if duration > COLAB_CONFIG['max_video_hours'] * 3600:
+            print(f"❌ Video too long (max {COLAB_CONFIG['max_video_hours']} hours)")
             clip.close()
             return False
-        
+    
         clip.write_audiofile("lecture.wav", verbose=False, logger=None)
         clip.close()
-        
-        print(f"✅ Converted {duration/60:.1f} minute video in Colab")
+        print("✅ Audio converted to WAV format")
         return True
-        
+    
     except Exception as e:
         print(f"Conversion failed: {e}")
         return False
+
+def get_audio_duration():
+    """Get duration of lecture.wav file"""
+    try:
+        if os.path.exists("lecture.wav"):
+            clip = AudioFileClip("lecture.wav")
+            duration = clip.duration
+            clip.close()
+            return duration
+        return 0
+    except Exception as e:
+        print(f"Error getting audio duration: {e}")
+        return 0
 
 def transcribe_audio_colab():
     """Colab transcription with GPU acceleration"""
@@ -208,41 +230,21 @@ def transcribe_audio_colab():
             raise FileNotFoundError("lecture.wav not found")
         
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        print(f"Using device: {device}")
+        print(f"Using: {device}")
         
-        try:
-            import librosa
-            audio_data, sr = librosa.load("lecture.wav", sr=16000)
-            duration = len(audio_data) / sr
-            print(f"Audio duration: {duration/60:.1f} minutes ({duration/3600:.1f} hours)")
-        except:
-            duration = 0
+        model = whisper.load_model(COLAB_CONFIG['whisper_model'], device=device)
         
-        if duration > 7200:  # 2+ hours
-            return transcribe_chunked_colab(duration, device)
-        
-        model_size = COLAB_CONFIG['whisper_model']
-        print(f"Loading Whisper {model_size} model on {device}...")
-        model = whisper.load_model(model_size, device=device)
-        
-        print("Starting Colab transcription with GPU acceleration...")
         result = model.transcribe(
             "lecture.wav",
             language='en',
-            task='transcribe',
             fp16=torch.cuda.is_available(),
             verbose=True
         )
         
-        transcript = result['text']
-        print(f"✅ Colab transcription completed!")
-        print(f"Transcript: {len(transcript):,} characters, {len(transcript.split()):,} words")
-        
-        return transcript
-        
+        return result['text']
+    
     except Exception as e:
-        print(f"Colab transcription failed: {e}")
-        return f"Transcription failed: {str(e)}"
+        return f"Transcription failed: {e}"
 
 def transcribe_chunked_colab(duration, device):
     """Chunked transcription for very long videos in Colab"""
@@ -306,90 +308,256 @@ def summarize_text_colab(text):
             if len(text) <= max_chunk:
                 chunks.append(text)
                 break
-            else:
-                split_at = text.rfind(".", 0, max_chunk)
-                if split_at == -1:
-                    split_at = max_chunk
-                chunks.append(text[:split_at + 1])
-                text = text[split_at + 1:]
+            split_at = text.rfind(".", 0, max_chunk)
+            if split_at == -1:
+                split_at = max_chunk
+            chunks.append(text[:split_at + 1])
+            text = text[split_at + 1:]
 
-        final_summary = ""
+        summary = ""
         for chunk in chunks:
-            summary = summarizer(chunk, max_length=150, min_length=50, do_sample=False)
-            final_summary += summary[0]['summary_text'] + " "
+            result = summarizer(chunk, max_length=150, min_length=50, do_sample=False)
+            summary += result[0]['summary_text'] + " "
         
-        return final_summary.strip()
+        return summary.strip()
     except Exception as e:
-        print(f"Summarization failed: {e}")
-        return "Summary generation failed"
+        return f"Summarization failed: {e}"
 
 def capitalize_sentences(text):
     """Capitalize sentences"""
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
-    capitalized = [s.strip().capitalize() for s in sentences]
-    return ' '.join(capitalized)
+    try:
+        sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+        capitalized = [s.strip().capitalize() for s in sentences if s.strip()]
+        return ' '.join(capitalized)
+    except Exception:
+        return text
+
+def cleanup_audio_files():
+    """Clean up temporary audio files"""
+    files_to_clean = ["audio.mp3", "audio.m4a", "audio.webm", "audio.wav", "audio.mp4", "lecture.wav"]
+    cleaned_count = 0
+    
+    for file in files_to_clean:
+        try:
+            if os.path.exists(file):
+                os.remove(file)
+                cleaned_count += 1
+        except Exception as e:
+            print(f"⚠️ Could not remove {file}: {e}")
+    
+    if cleaned_count > 0:
+        print(f"🧹 Cleaned up {cleaned_count} audio files")
 
 # Routes
 @app.route('/')
 def home():
-    return """
-    <html>
-    <head><title>YouTube Summarizer - Google Colab</title></head>
-    <body>
-        <h1>🎬 YouTube Video Summarizer (Google Colab)</h1>
-        <p><strong>Colab Advantages:</strong></p>
-        <ul>
-            <li>✅ Process videos up to 6 hours</li>
-            <li>✅ GPU acceleration (3-5x faster)</li>
-            <li>✅ 12-32GB RAM available</li>
-            <li>✅ Shared Firebase database</li>
-        </ul>
+    gpu_status = "GPU: " + ("Available" if torch.cuda.is_available() else "Not available")
+    firebase_status = "Firebase: " + ("Initialized" if db_firebase else "Not initialized")
+    
+    return f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube Summarizer - Colab</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {{ 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }}
+        .container {{
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }}
+        h1 {{
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+        }}
+        .status {{ 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin: 20px 0; 
+            border-left: 4px solid #28a745;
+            font-size: 14px;
+        }}
+        .form-group {{
+            margin: 20px 0;
+        }}
+        label {{
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }}
+        input[type="text"] {{ 
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }}
+        input[type="text"]:focus {{
+            border-color: #667eea;
+            outline: none;
+        }}
+        .btn {{
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }}
+        .btn:hover {{
+            background: #5a6fd8;
+        }}
+        .btn:disabled {{
+            background: #ccc;
+            cursor: not-allowed;
+        }}
+        #result {{ 
+            margin-top: 30px; 
+            padding: 20px; 
+            border: 1px solid #ddd; 
+            border-radius: 8px;
+            background: #f8f9fa;
+        }}
+        .loading {{
+            text-align: center;
+            color: #667eea;
+        }}
+        .error {{
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #f5c6cb;
+        }}
+        .success {{
+            color: #155724;
+        }}
+        .transcript-preview {{
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 YouTube Video Summarizer</h1>
+        <p style="text-align: center; color: #666;">Powered by Google Colab & OpenAI Whisper</p>
+        
+        <div class="status">
+            <strong>System Status:</strong><br>
+            {gpu_status}<br>
+            {firebase_status}<br>
+            Max video length: {COLAB_CONFIG['max_video_hours']} hours<br>
+            Whisper model: {COLAB_CONFIG['whisper_model']}
+        </div>
         
         <form id="summarizeForm">
-            <label>YouTube URL:</label><br>
-            <input type="text" id="url" style="width:400px" placeholder="https://youtube.com/watch?v=..."><br><br>
-            <button type="submit">Generate Summary</button>
+            <div class="form-group">
+                <label for="url">YouTube URL:</label>
+                <input type="text" id="url" name="url" 
+                       placeholder="https://youtube.com/watch?v=..." 
+                       required>
+            </div>
+            <div class="form-group">
+                <button type="submit" class="btn" id="submitBtn">🚀 Generate Summary</button>
+            </div>
         </form>
         
-        <div id="result" style="margin-top:20px;"></div>
-        
-        <script>
-        document.getElementById('summarizeForm').onsubmit = function(e) {
+        <div id="result" style="display:none;">
+            <h3>📝 Results</h3>
+            <div id="content"></div>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('summarizeForm').addEventListener('submit', async function(e) {{
             e.preventDefault();
+            
             const url = document.getElementById('url').value;
-            const resultDiv = document.getElementById('result');
+            const result = document.getElementById('result');
+            const content = document.getElementById('content');
+            const submitBtn = document.getElementById('submitBtn');
             
-            if (!url) {
-                alert('Please enter a YouTube URL');
-                return;
-            }
+            // Show loading state
+            result.style.display = 'block';
+            submitBtn.disabled = true;
+            submitBtn.textContent = '🔄 Processing...';
+            content.innerHTML = '<div class="loading"><p>🔄 Processing video... This may take several minutes depending on video length.</p><p>Please wait while we download, transcribe, and summarize your video.</p></div>';
             
-            resultDiv.innerHTML = '<p>🔄 Processing video... This may take several minutes for long videos.</p>';
-            
-            fetch('/summarize', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({url: url})
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    resultDiv.innerHTML = '<p style="color:red">❌ Error: ' + data.error + '</p>';
-                } else {
-                    resultDiv.innerHTML = 
-                        '<h3>📝 Transcript:</h3><p>' + data.transcript.substring(0, 500) + '...</p>' +
-                        '<h3>📋 Summary:</h3><p>' + data.summary + '</p>' +
-                        '<p><em>✅ Processed on: ' + data.processed_on + '</em></p>';
-                }
-            })
-            .catch(error => {
-                resultDiv.innerHTML = '<p style="color:red">❌ Error: ' + error + '</p>';
-            });
-        }
-        </script>
-    </body>
-    </html>
-    """
+            try {{
+                const response = await fetch('/summarize', {{
+                    method: 'POST',
+                    headers: {{
+                        'Content-Type': 'application/json'
+                    }},
+                    body: JSON.stringify({{ url: url }})
+                }});
+                
+                const data = await response.json();
+                
+                if (data.error) {{
+                    content.innerHTML = `<div class="error">❌ Error: ${{data.error}}</div>`;
+                }} else {{
+                    content.innerHTML = `
+                        <div class="success">
+                            <h4>📋 Summary:</h4>
+                            <p>${{data.summary}}</p>
+                            
+                            <h4>📝 Transcript Preview:</h4>
+                            <div class="transcript-preview">
+                                ${{data.transcript.length > 1000 ? data.transcript.substring(0, 1000) + '...' : data.transcript}}
+                            </div>
+                            
+                            <p><strong>✅ Processing completed successfully!</strong></p>
+                            <p><em>Processed with: ${{data.processed_on}}</em></p>
+                            ${{data.note ? '<p><em>' + data.note + '</em></p>' : ''}}
+                        </div>
+                    `;
+                }}
+            }} catch (error) {{
+                content.innerHTML = `<div class="error">❌ Network Error: ${{error.message}}</div>`;
+            }} finally {{
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 Generate Summary';
+            }}
+        }});
+    </script>
+</body>
+</html>
+"""
+
+@app.route('/health')
+def health():
+    """Health check endpoint"""
+    return jsonify({
+        'status': 'healthy',
+        'gpu_available': torch.cuda.is_available(),
+        'firebase_connected': db_firebase is not None,
+        'whisper_model': COLAB_CONFIG['whisper_model'],
+        'max_video_hours': COLAB_CONFIG['max_video_hours']
+    })
 
 @app.route('/summarize', methods=['POST'])
 def summarize():
@@ -399,6 +567,8 @@ def summarize():
     
     if not url:
         return jsonify({'error': 'No URL provided'}), 400
+
+    print(f"🎬 Processing video: {url}")
 
     # Check existing
     existing = check_existing_summary_colab(url)
@@ -427,8 +597,18 @@ def summarize():
         if not convert_to_wav_colab():
             return jsonify({'error': 'Video too long even for Colab (6+ hours)'}), 500
 
-        # Transcribe
-        transcript = transcribe_audio_colab()
+        # Transcribe (use chunked processing for videos longer than 15 minutes)
+        audio_duration = get_audio_duration()
+        print(f"📊 Audio duration: {audio_duration/60:.1f} minutes")
+        
+        if audio_duration > 900:  # 15 minutes
+            print("🎬 Using chunked transcription for long video...")
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            transcript = transcribe_chunked_colab(audio_duration, device)
+        else:
+            print("🎤 Using standard transcription...")
+            transcript = transcribe_audio_colab()
+            
         if transcript.startswith("Transcription failed:"):
             return jsonify({'error': transcript}), 500
         
@@ -443,22 +623,91 @@ def summarize():
         save_to_firebase_colab(url, transcript, summary, "Colab Processed Video", "", "")
         
         # Cleanup files
-        for f in ["audio.mp3", "audio.m4a", "audio.webm", "lecture.wav"]:
-            try:
-                os.remove(f)
-            except:
-                pass
+        cleanup_audio_files()
         
         return jsonify({
             'transcript': transcript,
             'summary': summary,
-            'processed_on': 'Google Colab (GPU)',
-            'note': 'Processed with GPU acceleration and saved to shared database'
+            'processed_on': 'Google Colab (GPU)' if torch.cuda.is_available() else 'Google Colab (CPU)',
+            'note': 'Processed with GPU acceleration and saved to shared database' if torch.cuda.is_available() else 'Processed on CPU and saved to shared database'
         })
         
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"❌ Error in summarize endpoint: {e}")
+        cleanup_audio_files()  # Clean up on error
         return jsonify({'error': f'Processing failed: {str(e)}'}), 500
 
+def setup_ngrok_tunnel():
+    """Set up ngrok tunnel with better error handling"""
+    try:
+        # Kill any existing tunnels
+        ngrok.kill()
+        print("🔄 Setting up ngrok tunnel...")
+        
+        # Create tunnel
+        public_url = ngrok.connect(5000)
+        public_url_str = str(public_url)
+        
+        print(f"✅ Public URL created: {public_url_str}")
+        print(f"🔗 Click this link to access your YouTube Summarizer:")
+        print(f"   {public_url_str}")
+        print()
+        print("🌐 You can share this URL with others!")
+        print("⚠️  Note: This URL is temporary and will expire when you stop this notebook.")
+        
+        return public_url_str
+        
+    except Exception as e:
+        print(f"❌ ngrok setup failed: {e}")
+        print("🚀 Will run without public URL (Colab internal only)")
+        return None
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    print("🚀 Starting YouTube Video Summarizer...")
+    print("=" * 50)
+    
+    # Print system info
+    print(f"🐍 Python: {os.sys.version}")
+    print(f"🎮 GPU Available: {torch.cuda.is_available()}")
+    print(f"🔥 Firebase: {'Connected' if db_firebase else 'Not connected'}")
+    print(f"⚙️ Whisper Model: {COLAB_CONFIG['whisper_model']}")
+    print(f"⏱️ Max Video Length: {COLAB_CONFIG['max_video_hours']} hours")
+    print()
+    
+    # Set up ngrok tunnel
+    public_url = setup_ngrok_tunnel()
+    
+    if public_url:
+        print(f"🌍 PUBLIC ACCESS: {public_url}")
+        print("=" * 50)
+    
+    print("🚀 Starting Flask server...")
+    print("📝 Ready to process YouTube videos!")
+    print()
+    print("💡 To stop the server: Press Ctrl+C or interrupt the kernel")
+    print()
+    
+    try:
+        # Run Flask app
+        app.run(
+            host='0.0.0.0', 
+            port=5000, 
+            debug=False, 
+            use_reloader=False,  # Important for Colab
+            threaded=True
+        )
+        
+    except KeyboardInterrupt:
+        print("\n🛑 Server stopped by user")
+    except Exception as e:
+        print(f"❌ Server error: {e}")
+    finally:
+        # Clean up
+        try:
+            ngrok.kill()
+            print("🧹 Ngrok tunnel closed")
+        except:
+            pass
+        
+        cleanup_audio_files()
+        print("👋 YouTube Summarizer stopped")
