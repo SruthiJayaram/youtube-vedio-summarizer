@@ -88,40 +88,43 @@ print("🚀 All imports successful! Flask app initialized.")
 def init_firebase_colab():
     """Initialize Firebase for Colab"""
     try:
-        @app.route('/')
-        def home():
-            try:
-                return render_template('index.html')
-            except Exception as e:
-                return f"Error loading template: {e}", 500
-
-        # Additional routes to use your templates
-        @app.route('/summaries')
-        def summaries():
-            try:
-                return render_template('summaries.html')
-            except Exception as e:
-                return f"Error loading template: {e}", 500
-
-        @app.route('/login')
-        def login():
-            try:
-                return render_template('login_signup.html')
-            except Exception as e:
-                return f"Error loading template: {e}", 500
-            
-        video_id = extract_video_id(url)
-        if video_id:
-            doc_ref = db_firebase.collection('summaries').document(video_id)
-            doc = doc_ref.get()
-            if doc.exists:
-                data = doc.to_dict()
-                print("✅ Found existing summary in Firebase")
-                return (data.get('transcript', ''), data.get('summary', ''))
+        if not firebase_admin._apps:
+            if os.path.exists('firebase-key.json'):
+                cred = credentials.Certificate('firebase-key.json')
+                firebase_admin.initialize_app(cred)
+                print("✅ Firebase initialized in Colab")
+                return firestore.client()
+            else:
+                print("❌ Upload firebase-key.json to Colab first!")
+                return None
+        return firestore.client()
     except Exception as e:
-        print(f"Firebase check failed: {e}")
-    
-    return None
+        print(f"Firebase initialization failed: {e}")
+        return None
+
+db_firebase = init_firebase_colab()
+
+# Route definitions (moved outside the function)
+@app.route('/')
+def home():
+    try:
+        return render_template('index.html')
+    except Exception as e:
+        return f"Error loading template: {e}", 500
+
+@app.route('/summaries')
+def summaries():
+    try:
+        return render_template('summaries.html')
+    except Exception as e:
+        return f"Error loading template: {e}", 500
+
+@app.route('/login')
+def login():
+    try:
+        return render_template('login_signup.html')
+    except Exception as e:
+        return f"Error loading template: {e}", 500
 
 def get_ydl_opts_colab(extract_flat=False):
     """Colab-optimized yt-dlp options"""
