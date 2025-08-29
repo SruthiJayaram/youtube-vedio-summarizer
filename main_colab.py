@@ -32,137 +32,31 @@ except ImportError:
 
 try:
     from transformers import pipeline
-    print("✅ Transformers imported successfully")
 except ImportError:
     print("Installing transformers...")
     import subprocess
     subprocess.run(["pip", "install", "transformers"], check=True)
     from transformers import pipeline
 
-try:
-    import firebase_admin
-    from firebase_admin import credentials, firestore
-    print("✅ Firebase imported successfully")
-except ImportError:
-    print("Installing firebase...")
-    import subprocess
-    subprocess.run(["pip", "install", "firebase-admin"], check=True)
-    import firebase_admin
-    from firebase_admin import credentials, firestore
-
-try:
-    import torch
-    print(f"✅ PyTorch imported successfully - CUDA: {torch.cuda.is_available()}")
-except ImportError:
-    print("Installing torch...")
-    import subprocess
-    subprocess.run(["pip", "install", "torch", "torchaudio"], check=True)
-    import torch
-
-try:
-    from moviepy.editor import AudioFileClip
-    print("✅ MoviePy imported successfully")
-except ImportError:
-    print("Installing moviepy...")
-    import subprocess
-    subprocess.run(["pip", "install", "moviepy"], check=True)
-    from moviepy.editor import AudioFileClip
-
-# Install and import ngrok
-try:
-    from pyngrok import ngrok
-    print("✅ pyngrok imported successfully")
-except ImportError:
-    print("Installing pyngrok...")
-    import subprocess
-    subprocess.run(["pip", "install", "pyngrok"], check=True)
-    from pyngrok import ngrok
-
-# Initialize Flask app
-app = Flask(__name__, template_folder='templates', static_folder='static')
-app.secret_key = 'colab_secret_key_' + str(random.randint(1000, 9999))
-
-print("🚀 All imports successful! Flask app initialized.")
-
-# Initialize Firebase for Colab
-def init_firebase_colab():
-    """Initialize Firebase for Colab"""
-    try:
-        if not firebase_admin._apps:
-            if os.path.exists('firebase-key.json'):
-                cred = credentials.Certificate('firebase-key.json')
-                firebase_admin.initialize_app(cred)
-                print("✅ Firebase initialized in Colab")
-                return firestore.client()
-            else:
-                print("❌ Upload firebase-key.json to Colab first!")
-                return None
-        return firestore.client()
-    except Exception as e:
-        print(f"Firebase initialization failed: {e}")
-        return None
-
-db_firebase = init_firebase_colab()
-
-# Route definitions (moved outside the function)
-@app.route('/')
-def home():
-    try:
-        return render_template('index.html')
-    except Exception as e:
-        return f"Error loading template: {e}", 500
-
-@app.route('/summaries')
-def summaries():
-    try:
-        return render_template('summaries.html')
-    except Exception as e:
-        return f"Error loading template: {e}", 500
-
-@app.route('/login')
-def login():
-    try:
-        return render_template('login_signup.html')
-    except Exception as e:
-        return f"Error loading template: {e}", 500
-
-def get_ydl_opts_colab(extract_flat=False):
-    """Colab-optimized yt-dlp options"""
-    return {
-        'format': 'bestaudio/best' if not extract_flat else None,
-        'outtmpl': 'audio.%(ext)s' if not extract_flat else None,
-        'quiet': True,
-        'no_warnings': True,
-        'extract_flat': extract_flat,
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    }
-
 def test_video_accessibility_colab(url):
     """Test video accessibility - COLAB VERSION"""
     try:
         test_opts = get_ydl_opts_colab(extract_flat=True)
-        
         with yt_dlp.YoutubeDL(test_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            
             if not info:
                 return False, "Video information not available"
-            
             if info.get('availability') == 'private':
                 return False, "Video is private"
-            
             if info.get('live_status') == 'is_live':
                 return False, "Cannot process live streams"
-            
             duration = info.get('duration', 0)
             if duration > 21600:  # 6 hours
                 hours = duration // 3600
                 return False, f"Video is too long ({hours} hours). Maximum: 6 hours on Colab."
-            
             hours = duration // 3600
             minutes = (duration % 3600) // 60
             return True, f"Video accessible ({hours}h {minutes}m) - Colab can process this"
-            
     except Exception as e:
         print(f"Accessibility check failed: {e}")
         return True, "Will attempt download"
