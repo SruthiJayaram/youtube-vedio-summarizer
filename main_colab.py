@@ -245,205 +245,21 @@ def cleanup_audio_files():
     if cleaned_count > 0:
         print(f"🧹 Cleaned up {cleaned_count} audio files")
 
-# Routes
+
+# ...existing code...
+
+# Initialize Flask app (ensure this is before any route definitions)
+app = Flask(__name__, template_folder='templates', static_folder='static')
+app.secret_key = 'colab_secret_key_' + str(random.randint(1000, 9999))
+
+# Route definitions (move below app initialization)
 @app.route('/')
 def home():
     gpu_status = "GPU: " + ("Available" if torch.cuda.is_available() else "Not available")
     firebase_status = "Firebase: " + ("Initialized" if db_firebase else "Not initialized")
-    
-    return f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <title>YouTube Summarizer - Colab</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {{ 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0;
-            padding: 40px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }}
-        .container {{
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }}
-        h1 {{
-            color: #333;
-            text-align: center;
-            margin-bottom: 10px;
-        }}
-        .status {{ 
-            background: #f8f9fa; 
-            padding: 15px; 
-            border-radius: 8px; 
-            margin: 20px 0; 
-            border-left: 4px solid #28a745;
-            font-size: 14px;
-        }}
-        .form-group {{
-            margin: 20px 0;
-        }}
-        label {{
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #555;
-        }}
-        input[type="text"] {{ 
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }}
-        input[type="text"]:focus {{
-            border-color: #667eea;
-            outline: none;
-        }}
-        .btn {{
-            background: #667eea;
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }}
-        .btn:hover {{
-            background: #5a6fd8;
-        }}
-        .btn:disabled {{
-            background: #ccc;
-            cursor: not-allowed;
-        }}
-        #result {{ 
-            margin-top: 30px; 
-            padding: 20px; 
-            border: 1px solid #ddd; 
-            border-radius: 8px;
-            background: #f8f9fa;
-        }}
-        .loading {{
-            text-align: center;
-            color: #667eea;
-        }}
-        .error {{
-            color: #dc3545;
-            background: #f8d7da;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #f5c6cb;
-        }}
-        .success {{
-            color: #155724;
-        }}
-        .transcript-preview {{
-            max-height: 200px;
-            overflow-y: auto;
-            background: white;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🎬 YouTube Video Summarizer</h1>
-        <p style="text-align: center; color: #666;">Powered by Google Colab & OpenAI Whisper</p>
-        
-        <div class="status">
-            <strong>System Status:</strong><br>
-            {gpu_status}<br>
-            {firebase_status}<br>
-            Max video length: {COLAB_CONFIG['max_video_hours']} hours<br>
-            Whisper model: {COLAB_CONFIG['whisper_model']}
-        </div>
-        
-        <form id="summarizeForm">
-            <div class="form-group">
-                <label for="url">YouTube URL:</label>
-                <input type="text" id="url" name="url" 
-                       placeholder="https://youtube.com/watch?v=..." 
-                       required>
-            </div>
-            <div class="form-group">
-                <button type="submit" class="btn" id="submitBtn">🚀 Generate Summary</button>
-            </div>
-        </form>
-        
-        <div id="result" style="display:none;">
-            <h3>📝 Results</h3>
-            <div id="content"></div>
-        </div>
-    </div>
-    
-    <script>
-        document.getElementById('summarizeForm').addEventListener('submit', async function(e) {{
-            e.preventDefault();
-            
-            const url = document.getElementById('url').value;
-            const result = document.getElementById('result');
-            const content = document.getElementById('content');
-            const submitBtn = document.getElementById('submitBtn');
-            
-            // Show loading state
-            result.style.display = 'block';
-            submitBtn.disabled = true;
-            submitBtn.textContent = '🔄 Processing...';
-            content.innerHTML = '<div class="loading"><p>🔄 Processing video... This may take several minutes depending on video length.</p><p>Please wait while we download, transcribe, and summarize your video.</p></div>';
-            
-            try {{
-                const response = await fetch('/summarize', {{
-                    method: 'POST',
-                    headers: {{
-                        'Content-Type': 'application/json'
-                    }},
-                    body: JSON.stringify({{ url: url }})
-                }});
-                
-                const data = await response.json();
-                
-                if (data.error) {{
-                    content.innerHTML = `<div class="error">❌ Error: ${{data.error}}</div>`;
-                }} else {{
-                    content.innerHTML = `
-                        <div class="success">
-                            <h4>📋 Summary:</h4>
-                            <p>${{data.summary}}</p>
-                            
-                            <h4>📝 Transcript Preview:</h4>
-                            <div class="transcript-preview">
-                                ${{data.transcript.length > 1000 ? data.transcript.substring(0, 1000) + '...' : data.transcript}}
-                            </div>
-                            
-                            <p><strong>✅ Processing completed successfully!</strong></p>
-                            <p><em>Processed with: ${{data.processed_on}}</em></p>
-                            ${{data.note ? '<p><em>' + data.note + '</em></p>' : ''}}
-                        </div>
-                    `;
-                }}
-            }} catch (error) {{
-                content.innerHTML = `<div class="error">❌ Network Error: ${{error.message}}</div>`;
-            }} finally {{
-                submitBtn.disabled = false;
-                submitBtn.textContent = '🚀 Generate Summary';
-            }}
-        }});
-    </script>
-</body>
-</html>
-"""
+    return render_template('index.html', gpu_status=gpu_status, firebase_status=firebase_status)
+
+# ...existing code...
 
 @app.route('/health')
 def health():
