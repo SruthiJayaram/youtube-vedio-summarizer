@@ -259,9 +259,29 @@ def cleanup_audio_files():
 
 # ...existing code...
 
+
 # Initialize Flask app (ensure this is before any route definitions)
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.secret_key = 'colab_secret_key_' + str(random.randint(1000, 9999))
+
+# Initialize Firebase for Colab
+def init_firebase_colab():
+    try:
+        if not firebase_admin._apps:
+            if os.path.exists('firebase-key.json'):
+                cred = credentials.Certificate('firebase-key.json')
+                firebase_admin.initialize_app(cred)
+                print("✅ Firebase initialized in Colab")
+                return firestore.client()
+            else:
+                print("❌ Upload firebase-key.json to Colab first!")
+                return None
+        return firestore.client()
+    except Exception as e:
+        print(f"Firebase initialization failed: {e}")
+        return None
+
+db_firebase = init_firebase_colab()
 
 # Route definitions (move below app initialization)
 @app.route('/')
