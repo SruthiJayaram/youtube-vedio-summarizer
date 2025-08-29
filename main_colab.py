@@ -2,6 +2,7 @@
 import os
 os.environ['COLAB_ENV'] = '1'
 
+
 # Core imports
 from flask import Flask, request, jsonify, render_template
 import time
@@ -9,6 +10,16 @@ import random
 from urllib.parse import urlparse, parse_qs
 import re
 import threading
+
+# Ensure torch is imported before any usage
+try:
+    import torch
+    print(f"✅ PyTorch imported successfully - CUDA: {torch.cuda.is_available()}")
+except ImportError:
+    print("Installing torch...")
+    import subprocess
+    subprocess.run(["pip", "install", "torch", "torchaudio"], check=True)
+    import torch
 
 # ML/AI imports
 try:
