@@ -257,9 +257,6 @@ def cleanup_audio_files():
         print(f"🧹 Cleaned up {cleaned_count} audio files")
 
 
-# ...existing code...
-
-
 # Initialize Flask app (ensure this is before any route definitions)
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.secret_key = 'colab_secret_key_' + str(random.randint(1000, 9999))
@@ -289,8 +286,6 @@ def home():
     gpu_status = "GPU: " + ("Available" if torch.cuda.is_available() else "Not available")
     firebase_status = "Firebase: " + ("Initialized" if db_firebase else "Not initialized")
     return render_template('index.html', gpu_status=gpu_status, firebase_status=firebase_status)
-
-# ...existing code...
 
 @app.route('/health')
 def health():
@@ -455,3 +450,10 @@ if __name__ == '__main__':
         
         cleanup_audio_files()
         print("👋 YouTube Summarizer stopped")
+
+COLAB_CONFIG = {
+    'whisper_model': 'base',
+    'max_video_hours': 6,
+    'chunk_duration': 900,
+    'use_gpu': True
+}
